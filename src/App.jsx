@@ -1,36 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { supabase, ADMIN_EMAIL, BUCKET } from './supabase';
-import { ShoppingBag, Search, Plus, Pencil, Trash2, Upload, X, LogOut, FolderTree, Smartphone, Package, Settings, Eye, EyeOff, Menu, ExternalLink, RefreshCw } from 'lucide-react';
-
-const WA_NUMBER = '916367312739';
-const initialSettings = { brand_name: 'Kavi.shell', tagline: 'SPEAK WITHOUT WORDS', logo_url: null };
-const blankProduct = { code: '', name: '', category_id: '', price: '599', image: null, is_active: true };
-
-export default function App() {
-  const [path,setPath] = useState(location.pathname);
-  const [session,setSession] = useState(null);
-  const [loading,setLoading] = useState(true);
-  const [settings,setSettings] = useState(initialSettings);
-  const [categories,setCategories] = useState([]);
-  const [products,setProducts] = useState([]);
-  const [models,setModels] = useState([]);
-  const [orders,setOrders] = useState([]);
-  const [tab,setTab] = useState('All');
-  const [selectedSubcategory,setSelectedSubcategory] = useState('');
-  const [query,setQuery] = useState('');
-  const [notice,setNotice] = useState('');
-  const [adminTab,setAdminTab] = useState('products');
-  const [email,setEmail] = useState(ADMIN_EMAIL);
-  const [password,setPassword] = useState('');
-  const [productModal,setProductModal] = useState(null);
-  const [productForm,setProductForm] = useState(blankProduct);
-  const [categoryModal,setCategoryModal] = useState(null);
-  const [categoryForm,setCategoryForm] = useState({name:'',parent_id:''});
-  const [modelName,setModelName] = useState('');
-  const [logoFile,setLogoFile] = useState(null);
-  const [bulkFiles,setBulkFiles] = useState([]);
-  const [bulkCategory,setBulkCategory] = useState('');
   const [selected,setSelected] = useState(null);
+  const [imagePreview,setImagePreview] = useState(false);
   const [selectedModel,setSelectedModel] = useState('');
   const [modelSearch,setModelSearch] = useState('');
   const [cart,setCart] = useState([]);
@@ -133,7 +102,8 @@ export default function App() {
     <div className="product-grid">{filtered.map(p=><button className="product-card" key={p.id} onClick={()=>{setSelected(p);setSelectedModel('');setModelSearch('');}}><div className="product-image"><img src={p.image_url} alt={p.name||p.code}/><span className="quick-add">Choose model <Plus size={14}/></span></div><div className="product-caption"><span>{p.code}</span><b>{p.name||p.code}</b><strong>₹{p.price||599}</strong></div></button>)}</div>{filtered.length===0&&<div className="empty-state"><h3>Nothing here just yet.</h3><p>New designs are on their way.</p></div>}</section></main>
     <footer className="site-footer"><b>{settings.brand_name||'Kavi.shell'}</b><span>{settings.tagline||'SPEAK WITHOUT WORDS'}</span><small>© {new Date().getFullYear()} {settings.brand_name||'Kavi.shell'}</small></footer>
     {notice&&!selected&&!checkout&&<div className="toast" onClick={()=>setNotice('')}>{notice}<X size={14}/></div>}
-    {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="product-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><img src={selected.image_url} alt={selected.name}/><div className="product-modal-info"><p className="eyebrow">{selected.code}</p><h2>{selected.name||selected.code}</h2><strong className="price">₹{selected.price||599}</strong><label>Search phone brand & model<input type="search" value={modelSearch} onChange={e=>setModelSearch(e.target.value)} placeholder="Search iPhone, Samsung, Pixel…"/><select value={selectedModel} onChange={e=>setSelectedModel(e.target.value)}><option value="">Choose your phone model</option>{[...new Set(models.filter(m=>(m.display_name||`${m.brand} ${m.model_name}`).toLowerCase().includes(modelSearch.toLowerCase())).map(m=>m.brand))].map(brand=><optgroup label={brand} key={brand}>{models.filter(m=>m.brand===brand&&(m.display_name||`${m.brand} ${m.model_name}`).toLowerCase().includes(modelSearch.toLowerCase())).map(m=><option key={m.id} value={m.display_name||`${m.brand} ${m.model_name}`}>{m.display_name||`${m.brand} ${m.model_name}`}</option>)}</optgroup>)}</select></label><button className="primary full" onClick={addCart}>Add to bag</button></div></div></div>}
+    {selected&&<div className="modal-backdrop" onClick={()=>{setImagePreview(false);setSelected(null);}}><div className="product-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>{setImagePreview(false);setSelected(null);}}><X/></button><img src={selected.image_url} alt={selected.name||selected.code} onClick={()=>setImagePreview(true)} style={{cursor:'zoom-in'}}/><div className="product-modal-info"><p className="eyebrow">{selected.code}</p><h2>{selected.name||selected.code}</h2><strong className="price">₹{selected.price||599}</strong><label>Search phone brand & model<input type="search" value={modelSearch} onChange={e=>setModelSearch(e.target.value)} placeholder="Search iPhone, Samsung, Pixel…"/><select value={selectedModel} onChange={e=>setSelectedModel(e.target.value)}><option value="">Choose your phone model</option>{[...new Set(models.filter(m=>(m.display_name||`${m.brand} ${m.model_name}`).toLowerCase().includes(modelSearch.toLowerCase())).map(m=>m.brand))].map(brand=><optgroup label={brand} key={brand}>{models.filter(m=>m.brand===brand&&(m.display_name||`${m.brand} ${m.model_name}`).toLowerCase().includes(modelSearch.toLowerCase())).map(m=><option key={m.id} value={m.display_name||`${m.brand} ${m.model_name}`}>{m.display_name||`${m.brand} ${m.model_name}`}</option>)}</optgroup>)}</select></label><button className="primary full" onClick={addCart}>Add to bag</button></div></div></div>}
+    {imagePreview&&selected&&<div onClick={()=>setImagePreview(false)} role="presentation" style={{position:'fixed',inset:0,zIndex:9999,background:'rgba(15,12,11,0.94)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px',boxSizing:'border-box',cursor:'zoom-out'}}><button type="button" aria-label="Close full-size image" onClick={()=>setImagePreview(false)} style={{position:'absolute',top:'18px',right:'20px',width:'44px',height:'44px',border:0,borderRadius:'50%',background:'#fff',color:'#2b211e',fontSize:'28px',lineHeight:1,cursor:'pointer',zIndex:1}}>×</button><img src={selected.image_url} alt={selected.name||selected.code} onClick={e=>e.stopPropagation()} style={{display:'block',maxWidth:'96vw',maxHeight:'92vh',width:'auto',height:'auto',objectFit:'contain',borderRadius:'8px',cursor:'default'}}/></div>}
     {checkout&&<div className="modal-backdrop" onClick={()=>setCheckout(false)}><div className="checkout-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setCheckout(false)}><X/></button><p className="eyebrow">YOUR SELECTION</p><h2>Your bag</h2>{cart.length===0?<p className="muted">Your bag is empty. Pick a design to get started.</p>:<><div className="cart-items">{cart.map(p=><div className="cart-item" key={p.cart_id}><img src={p.image_url} alt=""/><div><b>{p.name||p.code}</b><small>{p.code} · {p.phone_model}</small><strong>₹{p.price}</strong></div><button onClick={()=>setCart(c=>c.filter(x=>x.cart_id!==p.cart_id))}><Trash2 size={16}/></button></div>)}</div><div className="cart-total"><span>Total</span><b>₹{total}</b></div><form onSubmit={placeOrder} className="customer-form"><h3>Delivery details</h3><label>Your name<input value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})} required placeholder="Full name"/></label><label>Mobile number<input type="tel" pattern="[0-9+ ]{10,15}" value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})} required placeholder="Your contact number"/></label><label>Address (optional)<textarea value={customer.address} onChange={e=>setCustomer({...customer,address:e.target.value})} placeholder="Delivery address"/></label><button className="primary full">Continue to WhatsApp <ExternalLink size={16}/></button><small className="muted">Your order details will be saved and WhatsApp will open with your order summary. No online payment is collected on this website.</small></form></>}</div></div>}
   </div>;
 }
