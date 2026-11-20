@@ -16,6 +16,7 @@ export default function App() {
   const [models,setModels] = useState([]);
   const [orders,setOrders] = useState([]);
   const [tab,setTab] = useState('All');
+  const [selectedSubcategory,setSelectedSubcategory] = useState('');
   const [query,setQuery] = useState('');
   const [notice,setNotice] = useState('');
   const [adminTab,setAdminTab] = useState('products');
@@ -62,12 +63,23 @@ export default function App() {
   }
   useEffect(()=>{if(supabase)loadData();},[isAdmin]);
   const mains = categories.filter(x=>!x.parent_id);
+  const activeMain = mains.find(c=>c.name.toLowerCase()===tab.toLowerCase());
+  const subcategories = activeMain ? categories.filter(c=>c.parent_id===activeMain.id) : [];
   const filtered = useMemo(()=>{
     let rows=products.filter(p=>p.is_active);
-    if(tab!=='All') { const cat=mains.find(c=>c.name.toLowerCase()===tab.toLowerCase()); if(cat){const ids=categories.filter(c=>c.parent_id===cat.id).map(c=>c.id); rows=rows.filter(p=>ids.includes(p.category_id));} }
+    if(tab!=='All') {
+      const cat=mains.find(c=>c.name.toLowerCase()===tab.toLowerCase());
+      if(cat){
+        if(selectedSubcategory) rows=rows.filter(p=>p.category_id===selectedSubcategory);
+        else {
+          const ids=categories.filter(c=>c.parent_id===cat.id).map(c=>c.id);
+          rows=rows.filter(p=>ids.includes(p.category_id));
+        }
+      }
+    }
     if(query.trim()) rows=rows.filter(p=>(p.name||'').toLowerCase().includes(query.toLowerCase())||(p.code||'').toLowerCase().includes(query.toLowerCase()));
     return rows;
-  },[products,categories,tab,query]);
+  },[products,categories,tab,selectedSubcategory,query]);
   async function uploadFile(file,prefix){
     const name=`${prefix}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'-')}`;
     const {error}=await supabase.storage.from(BUCKET).upload(name,file,{upsert:false}); if(error)throw error;
@@ -116,7 +128,8 @@ export default function App() {
 
   return <div className="site"><header className="site-header"><button className="brand-lockup" onClick={()=>navigate('/')}><div className="brand-logo">{settings.logo_url?<img src={settings.logo_url} alt="logo"/>:'K.'}</div><span><b>{settings.brand_name||'Kavi.shell'}</b><small>{settings.tagline||'SPEAK WITHOUT WORDS'}</small></span></button><button className="bag-button" onClick={()=>setCheckout(true)}><ShoppingBag size={19}/> Bag <span>{cart.length}</span></button></header>
     <main><section className="hero"><p className="eyebrow">{settings.tagline||'SPEAK WITHOUT WORDS'}</p><h1>Cases that speak<br/><i>your style.</i></h1><p>Thoughtfully picked designs for the phone you carry every day.</p><button className="primary" onClick={()=>document.getElementById('shop').scrollIntoView({behavior:'smooth'})}>Explore collection <span>↓</span></button></section>
-    <section className="catalogue" id="shop"><div className="section-heading"><div><p className="eyebrow">THE COLLECTION</p><h2>Find your case.</h2></div><label className="search-box"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search designs"/></label></div><div className="category-tabs"><button className={tab==='All'?'active':''} onClick={()=>setTab('All')}>All</button>{mains.filter(m=>m.name.toLowerCase()!=='all').map(m=><button key={m.id} className={tab===m.name?'active':''} onClick={()=>setTab(m.name)}>{m.name}</button>)}</div>
+    <section className="catalogue" id="shop"><div className="section-heading"><div><p className="eyebrow">THE COLLECTION</p><h2>Find your case.</h2></div><label className="search-box"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search designs"/></label></div><div className="category-tabs"><button className={tab==='All'?'active':''} onClick={()=>{setTab('All');setSelectedSubcategory('');}}>All</button>{mains.filter(m=>m.name.toLowerCase()!=='all').map(m=><button key={m.id} className={tab===m.name?'active':''} onClick={()=>{setTab(m.name);setSelectedSubcategory('');}}>{m.name}</button>)}</div>
+    {tab!=='All'&&subcategories.length>0&&<div className="subcategory-tabs"><button className={!selectedSubcategory?'active':''} onClick={()=>setSelectedSubcategory('')}>All {tab}</button>{subcategories.map(c=><button key={c.id} className={selectedSubcategory===c.id?'active':''} onClick={()=>setSelectedSubcategory(c.id)}>{c.name}</button>)}</div>}
     <div className="product-grid">{filtered.map(p=><button className="product-card" key={p.id} onClick={()=>{setSelected(p);setSelectedModel('');setModelSearch('');}}><div className="product-image"><img src={p.image_url} alt={p.name||p.code}/><span className="quick-add">Choose model <Plus size={14}/></span></div><div className="product-caption"><span>{p.code}</span><b>{p.name||p.code}</b><strong>₹{p.price||599}</strong></div></button>)}</div>{filtered.length===0&&<div className="empty-state"><h3>Nothing here just yet.</h3><p>New designs are on their way.</p></div>}</section></main>
     <footer className="site-footer"><b>{settings.brand_name||'Kavi.shell'}</b><span>{settings.tagline||'SPEAK WITHOUT WORDS'}</span><small>© {new Date().getFullYear()} {settings.brand_name||'Kavi.shell'}</small></footer>
     {notice&&!selected&&!checkout&&<div className="toast" onClick={()=>setNotice('')}>{notice}<X size={14}/></div>}
