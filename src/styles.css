@@ -166,3 +166,189 @@
     font-size: 9px;
   }
 }
+
+
+/* Refined product selection and bulk action buttons */
+.admin-product > button:first-child,
+.admin-product > label:first-child,
+.admin-product > div:first-child button,
+.admin-product .product-select-btn,
+.admin-product .select-product-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 39px;
+  margin: 9px;
+  padding: 8px 15px;
+  border: 1px solid #d8c1ba;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #fff 0%, #fbf5f2 100%);
+  color: #68483e;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  box-shadow: 0 2px 5px #42271f0a;
+  transition: background .2s ease, border-color .2s ease, color .2s ease,
+              box-shadow .2s ease, transform .2s ease;
+}
+
+.admin-product > button:first-child:hover,
+.admin-product > label:first-child:hover,
+.admin-product > div:first-child button:hover,
+.admin-product .product-select-btn:hover,
+.admin-product .select-product-btn:hover {
+  background: #f5e7e2;
+  border-color: #b88d82;
+  color: #42271f;
+  box-shadow: 0 4px 12px #42271f12;
+  transform: translateY(-1px);
+}
+
+.admin-product > button:first-child:has(input:checked),
+.admin-product > label:first-child:has(input:checked),
+.admin-product > div:first-child button:has(input:checked),
+.admin-product .product-select-btn.selected,
+.admin-product .select-product-btn.selected {
+  background: linear-gradient(135deg, #42271f 0%, #704b40 100%);
+  border-color: #42271f;
+  color: #fff;
+  box-shadow: 0 4px 12px #42271f26;
+}
+
+.admin-product input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: #704b40;
+  cursor: pointer;
+}
+
+.admin-product :is(button, label):has(input[type="checkbox"]:checked) input[type="checkbox"] {
+  accent-color: #fff;
+}
+
+.admin-product > button:first-child:focus-visible,
+.admin-product > label:first-child:focus-within,
+.admin-product .product-select-btn:focus-visible,
+.admin-product .select-product-btn:focus-visible {
+  outline: 2px solid #b88d82;
+  outline-offset: 3px;
+}
+
+/* Bulk toolbar: Select All and Delete Selected */
+.panel > div:has(> button + button),
+.panel > div:has(> button:first-child) {
+  border-radius: 11px;
+}
+
+.panel button:has(svg) {
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.panel button:has(svg):hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.panel button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.panel button[class*="delete"],
+.panel button[class*="Delete"],
+.panel .bulk-delete-btn,
+.panel .delete-selected-btn {
+  background: linear-gradient(135deg, #a92c23 0%, #c9362b 100%);
+  border: 1px solid #a92c23;
+  border-radius: 9px;
+  color: #fff;
+  padding: 12px 19px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 10px #a92c2326;
+  transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+}
+
+.panel button[class*="delete"]:hover,
+.panel button[class*="Delete"]:hover,
+.panel .bulk-delete-btn:hover,
+.panel .delete-selected-btn:hover {
+  filter: brightness(.94);
+  transform: translateY(-2px);
+  box-shadow: 0 7px 16px #a92c2333;
+}
+
+.panel button[class*="delete"]:active,
+.panel button[class*="Delete"]:active,
+.panel .bulk-delete-btn:active,
+.panel .delete-selected-btn:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 700px) {
+  .admin-product > button:first-child,
+  .admin-product > label:first-child,
+  .admin-product > div:first-child button,
+  .admin-product .product-select-btn,
+  .admin-product .select-product-btn {
+    min-height: 35px;
+    margin: 7px;
+    padding: 7px 11px;
+    gap: 7px;
+    font-size: 10px;
+    border-radius: 8px;
+  }
+
+  .admin-product input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+  }
+
+  .panel button[class*="delete"],
+  .panel button[class*="Delete"],
+  .panel .bulk-delete-btn,
+  .panel .delete-selected-btn {
+    min-height: 42px;
+    padding: 10px 13px;
+    font-size: 11px;
+  }
+}
+
+
+/* The two-button bulk selection row inside the product catalogue panel */
+.panel > div:has(> button:first-child):has(> button:last-child) > button:first-child {
+  min-height: 42px;
+  padding: 10px 17px;
+  border: 1px solid #9c786d;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #fff 0%, #f8eeeb 100%);
+  color: #42271f;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px #42271f0d;
+}
+
+.panel > div:has(> button:first-child):has(> button:last-child) > button:first-child:hover {
+  background: #f1dfda;
+  border-color: #b88d82;
+  box-shadow: 0 5px 12px #42271f14;
+}
+
+.panel > div:has(> button:first-child):has(> button:last-child) > button:last-child {
+  min-height: 42px;
+  padding: 10px 18px;
+  border: 1px solid #a92c23;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #a92c23 0%, #c9362b 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 10px #a92c2326;
+}
+
+.panel > div:has(> button:first-child):has(> button:last-child) > button:last-child:hover:not(:disabled) {
+  background: linear-gradient(135deg, #92231c 0%, #b52d24 100%);
+  box-shadow: 0 7px 16px #a92c2333;
+  transform: translateY(-1px);
+}
