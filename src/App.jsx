@@ -187,14 +187,21 @@ export default function App() {
 
 
 
+
 function displayProductName(name, fallback = '') {
-  const text = String(name || fallback || '').replace(/\s+/g, ' ').trim();
-  const words = text.match(/\S+/g) || [];
+  const text = String(name || fallback || '').trim();
 
-  if (words.length <= 18) return text;
+  const words = text
+    .split(/[\s_-]+/)
+    .filter(Boolean);
 
-  return words.slice(0, 18).join(' ') + '...';
+  if (words.length > 15) {
+    return words.slice(0, 15).join(' ') + '...';
+  }
+
+  return words.join(' ');
 }
+
 
 
 function ImagesIcon(props){return <Package {...props}/>;}
