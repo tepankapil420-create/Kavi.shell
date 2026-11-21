@@ -186,15 +186,14 @@ export default function App() {
 }
 
 
-function displayProductName(name, fallback = '') {
-  const words = String(name || fallback)
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
 
-  return words.length > 19
-    ? `${words.slice(0, 19).join(' ')}…`
-    : words.join(' ');
+function displayProductName(name, fallback = '') {
+  const text = String(name || fallback || '').replace(/\s+/g, ' ').trim();
+  const words = text.match(/\S+/g) || [];
+
+  if (words.length <= 18) return text;
+
+  return words.slice(0, 18).join(' ') + '...';
 }
 
 
