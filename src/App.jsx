@@ -1,18 +1,17 @@
-    try{
-      for(const file of bulkFiles){
-        const code=`${prefix}${String(start+done).padStart(digits,'0')}`;
-        if(products.some(p=>(p.code||'').toUpperCase()===code.toUpperCase()))throw new Error(`Product code ${code} already exists. Change the starting code and try again.`);
-        const image_url=await uploadFile(file,'products');
-        const {error}=await supabase.from('products').insert({code,name:file.name.replace(/\.[^.]+$/,''),category_id:bulkCategory,price:599,image_url,is_active:true});
-        if(error)throw error;
+        if (error) throw error;
         done++;
       }
+
       setBulkFiles([]);
       setBulkStartCode(suggestBulkStartCode(bulkCategory));
-      const fileInput=e.currentTarget.querySelector('input[type=\"file\"]');if(fileInput)fileInput.value='';
+      const fileInput = form?.querySelector('input[type="file"]');
+      if (fileInput) fileInput.value = '';
       await loadData();
-      setNotice(`${done} images uploaded with codes ${prefix}${String(start).padStart(digits,'0')} to ${prefix}${String(start+done-1).padStart(digits,'0')}.`);
-    }catch(e){setNotice(`${done} uploaded; stopped: ${e.message}`);await loadData();}
+      setNotice(`${done} images uploaded with codes ${prefix}${String(start).padStart(digits, '0')} to ${prefix}${String(start + done - 1).padStart(digits, '0')}.`);
+    } catch (error) {
+      setNotice(`${done} uploaded; stopped: ${error.message}`);
+      await loadData();
+    }
   }
   async function saveCategory(e){e.preventDefault();const payload={name:categoryForm.name.trim(),parent_id:categoryForm.parent_id||null};const r=categoryModal?.id?await supabase.from('categories').update(payload).eq('id',categoryModal.id):await supabase.from('categories').insert(payload);if(r.error)setNotice(r.error.message);else{setCategoryModal(null);await loadData();setNotice('Category saved.');}}
   async function deleteCategory(c){if(!confirm(`Delete ${c.name}? Related products may also be deleted.`))return;const {error}=await supabase.from('categories').delete().eq('id',c.id);if(error)setNotice(error.message);else loadData();}
