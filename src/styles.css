@@ -17,3 +17,38 @@
   .category-tabs button{font-size:12px}
   .subcategory-tabs button{font-size:11px}
 }
+
+/* Compact product names across the storefront */
+.product-caption b {
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.product-modal-info h2 {
+  font-size: 21px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.cart-item > div b {
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .product-caption b {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .product-modal-info h2 {
+    font-size: 19px;
+  }
+}
