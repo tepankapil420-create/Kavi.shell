@@ -185,9 +185,17 @@ export default function App() {
   </div>;
 }
 
-function displayProductName(name, fallback='') {
-  const words = String(name || fallback).trim().split(/\\s+/).filter(Boolean);
-  return words.length > 19 ? `${words.slice(0, 19).join(' ')}…` : words.join(' ');
+
+function displayProductName(name, fallback = '') {
+  const words = String(name || fallback)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return words.length > 19
+    ? `${words.slice(0, 19).join(' ')}…`
+    : words.join(' ');
 }
+
 
 function ImagesIcon(props){return <Package {...props}/>;}
