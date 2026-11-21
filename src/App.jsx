@@ -188,16 +188,15 @@ export default function App() {
 
 
 
+
 function displayProductName(name, fallback = '') {
   const text = String(name || fallback || '')
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
-  const words = text.split(' ').filter(Boolean);
-
-  return words.length > 15
-    ? words.slice(0, 15).join(' ') + '...'
+  return text.length > 15
+    ? text.slice(0, 15) + '...'
     : text;
 }
 
