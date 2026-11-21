@@ -195,8 +195,8 @@ function displayProductName(name, fallback = '') {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return text.length > 20
-    ? text.slice(0, 20) + '...'
+  return text.length > 25
+    ? text.slice(0, 25) + '...'
     : text;
 }
 
