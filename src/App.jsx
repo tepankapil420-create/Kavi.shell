@@ -31,6 +31,7 @@ export default function App() {
   const [bulkFiles,setBulkFiles] = useState([]);
   const [bulkCategory,setBulkCategory] = useState('');
   const [bulkStartCode,setBulkStartCode] = useState('');
+  const [bulkPrice,setBulkPrice] = useState('599');
   const [selectedProductIds,setSelectedProductIds] = useState([]);
   const [selected,setSelected] = useState(null);
   const [selectedModel,setSelectedModel] = useState('');
@@ -126,6 +127,16 @@ export default function App() {
       return;
     }
 
+    const enteredPrice = Number(bulkPrice);
+    if (
+      bulkPrice.trim() === '' ||
+      !Number.isFinite(enteredPrice) ||
+      enteredPrice < 0
+    ) {
+      setNotice('Please enter a valid product price.');
+      return;
+    }
+
     const firstCode = bulkStartCode.trim().toUpperCase();
     const match = firstCode.match(/^(.*?)(\d+)$/);
     if (!match) {
@@ -154,7 +165,7 @@ export default function App() {
           code,
           name: file.name.replace(/\.[^.]+$/, ''),
           category_id: bulkCategory,
-          price: 599,
+          price: enteredPrice,
           image_url,
           is_active: true
         });
@@ -279,7 +290,7 @@ export default function App() {
           {selectedProductIds.includes(p.id)?'Selected':'Select'}
         </button>
         <img src={p.image_url} alt={p.name}/><div className="admin-product-info"><b>{displayProductName(p.name,p.code)}</b><span>₹{p.price||599}</span></div><small>{p.code} · {p.is_active?'Published':'Hidden'}</small><div className="admin-actions"><button title="Edit" onClick={()=>{setProductForm({code:p.code,name:p.name||'',category_id:p.category_id,price:String(p.price||599),image:null,is_active:p.is_active});setProductModal(p);}}><Pencil size={15}/></button><button title="Publish/hide" onClick={()=>toggleProduct(p)}>{p.is_active?<EyeOff size={15}/>:<Eye size={15}/>}</button><button title="Delete" onClick={()=>deleteProduct(p)}><Trash2 size={15}/></button></div></article>)}</div></section>
-      <section className="panel bulk-panel"><h2>Bulk image upload</h2><p className="muted">Select a subcategory and multiple images. Product codes will continue automatically for that subcategory; you can edit the first code before uploading. Default price is ₹599.</p><form onSubmit={bulkUpload} className="bulk-form"><label>Category<select value={bulkCategory} onChange={e=>{setBulkCategory(e.target.value);setBulkStartCode(suggestBulkStartCode(e.target.value));}} required><option value="">Choose category</option>{categories.filter(c=>c.parent_id).map(c=><option value={c.id} key={c.id}>{mains.find(m=>m.id===c.parent_id)?.name} / {c.name}</option>)}</select></label><label>Starting product code<input value={bulkStartCode} onChange={e=>setBulkStartCode(e.target.value.toUpperCase())} placeholder="e.g. MSC001" required/></label><label>Images<input type="file" accept="image/*" multiple onChange={e=>setBulkFiles([...e.target.files])}/></label><span className="muted tiny">{bulkFiles.length} image(s) selected</span><button type="submit" className="primary"><Upload size={16}/> Upload all</button></form></section></>}
+      <section className="panel bulk-panel"><h2>Bulk image upload</h2><p className="muted">Select a subcategory and multiple images. Product codes will continue automatically for that subcategory; you can edit the first code and set the price before uploading.</p><form onSubmit={bulkUpload} className="bulk-form"><label>Category<select value={bulkCategory} onChange={e=>{setBulkCategory(e.target.value);setBulkStartCode(suggestBulkStartCode(e.target.value));}} required><option value="">Choose category</option>{categories.filter(c=>c.parent_id).map(c=><option value={c.id} key={c.id}>{mains.find(m=>m.id===c.parent_id)?.name} / {c.name}</option>)}</select></label><label>Starting product code<input value={bulkStartCode} onChange={e=>setBulkStartCode(e.target.value.toUpperCase())} placeholder="e.g. MSC001" required/></label><label>Product price (₹)<input type="number" min="0" step="0.01" value={bulkPrice} onChange={e=>setBulkPrice(e.target.value)} placeholder="Enter product price" required/></label><label>Images<input type="file" accept="image/*" multiple onChange={e=>setBulkFiles([...e.target.files])} required/></label><span className="muted tiny">{bulkFiles.length} image(s) selected</span><button type="submit" className="primary"><Upload size={16}/> Upload all</button></form></section></>}
     {adminTab==='categories'&&<section className="panel"><div className="panel-head"><div><h2>Categories</h2><p className="muted">Create Men, Women, All and any subcategories.</p></div><button className="primary" onClick={()=>{setCategoryForm({name:'',parent_id:''});setCategoryModal({});}}><Plus size={16}/> Add category</button></div><div className="category-admin-list">{mains.map(c=><div className="category-admin-card" key={c.id}><div className="category-row"><b>{c.name}</b><div><button className="mini-action" onClick={()=>{setCategoryForm({name:c.name,parent_id:''});setCategoryModal(c);}}><Pencil size={14}/> Edit</button><button className="mini-action" onClick={()=>{setCategoryForm({name:'',parent_id:c.id});setCategoryModal({});}}><Plus size={14}/> Subcategory</button><button className="mini-action danger" onClick={()=>deleteCategory(c)}><Trash2 size={14}/></button></div></div>{categories.filter(s=>s.parent_id===c.id).map(s=><div className="sub-row" key={s.id}><span>↳ {s.name}</span><div><button onClick={()=>{setCategoryForm({name:s.name,parent_id:c.id});setCategoryModal(s);}}><Pencil size={14}/></button><button onClick={()=>deleteCategory(s)}><Trash2 size={14}/></button></div></div>)}</div>)}</div></section>}
     {adminTab==='models'&&<section className="panel"><h2>Phone model list</h2><p className="muted">Add brand and model separated by a space, for example Apple iPhone 16 Pro.</p><form className="inline-form" onSubmit={saveModel}><input value={modelName} onChange={e=>setModelName(e.target.value)} placeholder="Apple iPhone 16 Pro"/><button className="primary"><Plus size={16}/> Add model</button></form><div className="model-list">{models.map(m=><div key={m.id}><span><b>{m.brand}</b> {m.model_name}</span><button onClick={()=>deleteModel(m.id)}><Trash2 size={15}/></button></div>)}</div></section>}
     {adminTab==='orders'&&<section className="panel"><div className="panel-head"><div><h2>Customer orders</h2><p className="muted">Orders are saved here before WhatsApp opens.</p></div><button className="outline" onClick={loadData}><RefreshCw size={15}/> Refresh</button></div>{orders.length===0?<p className="empty-state">No orders yet.</p>:<div className="orders-list">{orders.map(o=><article key={o.id} className="order-card"><div className="order-head"><b>Order #{o.id.slice(0,8)}</b><span>{new Date(o.created_at).toLocaleString()}</span><strong>₹{o.total}</strong></div><p><b>{o.customer_name}</b> · {o.customer_phone} · {o.customer_address}</p>{(o.items||[]).map((it,i)=><div className="order-item" key={i}><img src={it.image_url} alt=""/><span>{it.name} ({it.code})<small>{it.phone_model} · Qty {it.quantity}</small></span><b>₹{it.price}</b></div>)}</article>)}</div>}</section>}
@@ -301,21 +312,15 @@ export default function App() {
   </div>;
 }
 
-
-
-
-
 function displayProductName(name, fallback = '') {
   const text = String(name || fallback || '')
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
-  return text.length > 25
-    ? text.slice(0, 25) + '...'
+  return text.length > 15
+    ? text.slice(0, 15) + '...'
     : text;
 }
-
-
 
 function ImagesIcon(props){return <Package {...props}/>;}
