@@ -189,17 +189,16 @@ export default function App() {
 
 
 function displayProductName(name, fallback = '') {
-  const text = String(name || fallback || '').trim();
+  const text = String(name || fallback || '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  const words = text
-    .split(/[\s_-]+/)
-    .filter(Boolean);
+  const words = text.split(' ').filter(Boolean);
 
-  if (words.length > 15) {
-    return words.slice(0, 15).join(' ') + '...';
-  }
-
-  return words.join(' ');
+  return words.length > 15
+    ? words.slice(0, 15).join(' ') + '...'
+    : text;
 }
 
 
