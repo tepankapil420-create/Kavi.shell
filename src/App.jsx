@@ -124,3 +124,4 @@ function displayProductName(name, fallback = '') {
     ? text.slice(0, 25) + '...'
     : text;
 }
+
