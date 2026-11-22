@@ -4,7 +4,7 @@ import { ShoppingBag, Search, Plus, Pencil, Trash2, Upload, X, LogOut, FolderTre
 
 const WA_NUMBER = '916367312739';
 const initialSettings = { brand_name: 'Kavi.shell', tagline: 'SPEAK WITHOUT WORDS', logo_url: null };
-const blankProduct = { code: '', name: '', category_id: '', price: '299', image: null, is_active: true };
+const blankProduct = { code: '', name: '', category_id: '', price: '599', image: null, is_active: true };
 
 export default function App() {
   const [path,setPath] = useState(location.pathname);
@@ -31,14 +31,14 @@ export default function App() {
   const [bulkFiles,setBulkFiles] = useState([]);
   const [bulkCategory,setBulkCategory] = useState('');
   const [bulkStartCode,setBulkStartCode] = useState('');
-  const [bulkPrice,setBulkPrice] = useState('299');
+  const [bulkPrice,setBulkPrice] = useState('599');
   const [selectedProductIds,setSelectedProductIds] = useState([]);
   const [selected,setSelected] = useState(null);
   const [selectedModel,setSelectedModel] = useState('');
   const [modelSearch,setModelSearch] = useState('');
   const [cart,setCart] = useState([]);
   const [checkout,setCheckout] = useState(false);
-  const [customer,setCustomer] = useState({name:'',phone:'',address:''});
+  const [customer,setCustomer] = useState({name:'',phone:'',address:'',pincode:''});
   const [mobileNav,setMobileNav] = useState(false);
 
   const navigate = (p) => { history.pushState({},'',p); setPath(p); window.scrollTo(0,0); };
@@ -263,11 +263,25 @@ export default function App() {
   async function toggleProduct(p){const {error}=await supabase.from('products').update({is_active:!p.is_active}).eq('id',p.id);if(error)setNotice(error.message);else loadData();}
   function addCart(){if(!selectedModel)return setNotice('Please select your phone model.');setCart(c=>[...c,{...selected,phone_model:selectedModel,qty:1,cart_id:`${selected.id}-${Date.now()}`}]);setSelected(null);setSelectedModel('');setNotice('Added to your bag.');}
   const total=cart.reduce((sum,p)=>sum+(Number(p.price)||0)*p.qty,0);
-  async function placeOrder(e){e.preventDefault();if(!cart.length)return;try{const orderId=crypto.randomUUID();const orderPayload={id:orderId,customer_name:customer.name,customer_phone:customer.phone,customer_address:customer.address,items:cart.map(p=>({product_id:p.id,code:p.code,name:p.name,image_url:p.image_url,phone_model:p.phone_model,price:p.price,quantity:p.qty})),total,status:'New'};const {error}=await supabase.from('orders').insert(orderPayload);if(error)throw error;
+  async function placeOrder(e){
+    e.preventDefault();
+    if(!cart.length)return;
+    const cleanPincode=customer.pincode.trim();
+    if(!customer.address.trim())return setNotice('Please enter your complete delivery address.');
+    if(!/^[0-9]{6}$/.test(cleanPincode))return setNotice('Please enter a valid 6-digit PIN code.');
+    try{
+      const orderId=crypto.randomUUID();
+      // Keep address and PIN code in the existing database column so no SQL schema change is needed.
+      const savedAddress=`${customer.address.trim()}\nPincode: ${cleanPincode}`;
+      const orderPayload={id:orderId,customer_name:customer.name,customer_phone:customer.phone,customer_address:savedAddress,items:cart.map(p=>({product_id:p.id,code:p.code,name:p.name,image_url:p.image_url,phone_model:p.phone_model,price:p.price,quantity:p.qty})),total,status:'New'};
+      const {error}=await supabase.from('orders').insert(orderPayload);
+      if(error)throw error;
       const lines=cart.map((p,i)=>`${i+1}. ${p.name} (${p.code})\nPhone: ${p.phone_model}\nQty: ${p.qty} | ₹${p.price}\nImage: ${p.image_url}`).join('\n\n');
-      const msg=`Hello Kavi.shell! I want to place an order.\n\nOrder ID: ${orderId}\nName: ${customer.name}\nPhone: ${customer.phone}\nAddress: ${customer.address||'Not provided'}\n\n${lines}\n\nTotal: ₹${total}`;
-      window.location.href=`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;setCart([]);setCheckout(false);
-    }catch(e){setNotice(`Order could not be saved: ${e.message}`);}}
+      const msg=`Hello Kavi.shell! I want to place an order.\n\nOrder ID: ${orderId}\nName: ${customer.name}\nPhone: ${customer.phone}\nAddress: ${customer.address.trim()}\nPincode: ${cleanPincode}\n\n${lines}\n\nTotal: ₹${total}`;
+      window.location.href=`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
+      setCart([]);setCheckout(false);
+    }catch(e){setNotice(`Order could not be saved: ${e.message}`);}
+  }
 
   if(loading)return <div className="center-screen">Loading Kavi.shell…</div>;
   if(!supabase)return <div className="setup-wrap"><div className="setup-card"><div className="monogram">K.</div><p className="eyebrow">KAVI.SHELL · SETUP</p><h1>Connect your catalogue</h1><p>Add your Supabase URL and anon key to Vercel environment variables. Run the updated <code>supabase/schema.sql</code> in Supabase SQL Editor, then redeploy.</p></div></div>;
@@ -307,8 +321,8 @@ export default function App() {
     <div className="product-grid">{filtered.map(p=><button className="product-card" key={p.id} onClick={()=>{setSelected(p);setSelectedModel('');setModelSearch('');}}><div className="product-image"><img src={p.image_url} alt={p.name||p.code}/><span className="quick-add">Choose model <Plus size={14}/></span></div><div className="product-caption"><span>{p.code}</span><b>{displayProductName(p.name,p.code)}</b><strong>₹{p.price||599}</strong></div></button>)}</div>{filtered.length===0&&<div className="empty-state"><h3>Nothing here just yet.</h3><p>New designs are on their way.</p></div>}</section></main>
     <footer className="site-footer"><b>{settings.brand_name||'Kavi.shell'}</b><span>{settings.tagline||'SPEAK WITHOUT WORDS'}</span><small>© {new Date().getFullYear()} {settings.brand_name||'Kavi.shell'}</small></footer>
     {notice&&!selected&&!checkout&&<div className="toast" onClick={()=>setNotice('')}>{notice}<X size={14}/></div>}
-    {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="product-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><img src={selected.image_url} alt={selected.name}/><div className="product-modal-info"><p className="eyebrow">{selected.code}</p><h2>{displayProductName(selected.name,selected.code)}</h2><strong className="price">₹{selected.price||299}</strong><label>Search phone brand & model<input type="search" value={modelSearch} onChange={e=>setModelSearch(e.target.value)} placeholder="Search iPhone, Samsung, Pixel…"/><select value={selectedModel} onChange={e=>setSelectedModel(e.target.value)}><option value="">Choose your phone model</option>{[...new Set(models.filter(m=>(m.display_name||`${m.brand} ${m.model_name}`).toLowerCase().includes(modelSearch.toLowerCase())).map(m=>m.brand))].map(brand=><optgroup label={brand} key={brand}>{models.filter(m=>m.brand===brand&&(m.display_name||`${m.brand} ${m.model_name}`).toLowerCase().includes(modelSearch.toLowerCase())).map(m=><option key={m.id} value={m.display_name||`${m.brand} ${m.model_name}`}>{m.display_name||`${m.brand} ${m.model_name}`}</option>)}</optgroup>)}</select></label><button className="primary full" onClick={addCart}>Add to bag</button></div></div></div>}
-    {checkout&&<div className="modal-backdrop" onClick={()=>setCheckout(false)}><div className="checkout-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setCheckout(false)}><X/></button><p className="eyebrow">YOUR SELECTION</p><h2>Your bag</h2>{cart.length===0?<p className="muted">Your bag is empty. Pick a design to get started.</p>:<><div className="cart-items">{cart.map(p=><div className="cart-item" key={p.cart_id}><img src={p.image_url} alt=""/><div><b>{displayProductName(p.name,p.code)}</b><small>{p.code} · {p.phone_model}</small><strong>₹{p.price}</strong></div><button onClick={()=>setCart(c=>c.filter(x=>x.cart_id!==p.cart_id))}><Trash2 size={16}/></button></div>)}</div><div className="cart-total"><span>Total</span><b>₹{total}</b></div><form onSubmit={placeOrder} className="customer-form"><h3>Delivery details</h3><label>Your name<input value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})} required placeholder="Full name"/></label><label>Mobile number<input type="tel" pattern="[0-9+ ]{10,15}" value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})} required placeholder="Your contact number"/></label><label>Address (optional)<textarea value={customer.address} onChange={e=>setCustomer({...customer,address:e.target.value})} placeholder="Delivery address"/></label><button className="primary full">Continue to WhatsApp <ExternalLink size={16}/></button><small className="muted">Your order details will be saved and WhatsApp will open with your order summary. No online payment is collected on this website.</small></form></>}</div></div>}
+    {selected&&<div className="modal-backdrop" onClick={()=>setSelected(null)}><div className="product-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><img src={selected.image_url} alt={selected.name}/><div className="product-modal-info"><p className="eyebrow">{selected.code}</p><h2>{displayProductName(selected.name,selected.code)}</h2><strong className="price">₹{selected.price||599}</strong><label>Search phone brand & model<input type="search" value={modelSearch} onChange={e=>setModelSearch(e.target.value)} placeholder="Search iPhone, Samsung, Pixel…"/><select value={selectedModel} onChange={e=>setSelectedModel(e.target.value)}><option value="">Choose your phone model</option>{[...new Set(models.filter(m=>(m.display_name||`${m.brand} ${m.model_name}`).toLowerCase().includes(modelSearch.toLowerCase())).map(m=>m.brand))].map(brand=><optgroup label={brand} key={brand}>{models.filter(m=>m.brand===brand&&(m.display_name||`${m.brand} ${m.model_name}`).toLowerCase().includes(modelSearch.toLowerCase())).map(m=><option key={m.id} value={m.display_name||`${m.brand} ${m.model_name}`}>{m.display_name||`${m.brand} ${m.model_name}`}</option>)}</optgroup>)}</select></label><button className="primary full" onClick={addCart}>Add to bag</button></div></div></div>}
+    {checkout&&<div className="modal-backdrop" onClick={()=>setCheckout(false)}><div className="checkout-modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setCheckout(false)}><X/></button><p className="eyebrow">YOUR SELECTION</p><h2>Your bag</h2>{cart.length===0?<p className="muted">Your bag is empty. Pick a design to get started.</p>:<><div className="cart-items">{cart.map(p=><div className="cart-item" key={p.cart_id}><img src={p.image_url} alt=""/><div><b>{displayProductName(p.name,p.code)}</b><small>{p.code} · {p.phone_model}</small><strong>₹{p.price}</strong></div><button onClick={()=>setCart(c=>c.filter(x=>x.cart_id!==p.cart_id))}><Trash2 size={16}/></button></div>)}</div><div className="cart-total"><span>Total</span><b>₹{total}</b></div><form onSubmit={placeOrder} className="customer-form"><h3>Delivery details</h3><label>Your name<input value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})} required placeholder="Full name"/></label><label>Mobile number<input type="tel" pattern="[0-9+ ]{10,15}" value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})} required placeholder="Your contact number"/></label><label>Full delivery address<input value={customer.address} onChange={e=>setCustomer({...customer,address:e.target.value})} required placeholder="House/Flat, street, area, city, state"/></label><label>PIN code<input type="text" inputMode="numeric" pattern="[0-9]{6}" minLength={6} maxLength={6} value={customer.pincode} onChange={e=>setCustomer({...customer,pincode:e.target.value.replace(/\D/g,'').slice(0,6)})} required placeholder="Enter 6-digit PIN code"/></label><button className="primary full">Continue to WhatsApp <ExternalLink size={16}/></button><small className="muted">Your order details will be saved and WhatsApp will open with your order summary. No online payment is collected on this website.</small></form></>}</div></div>}
   </div>;
 }
 
@@ -318,8 +332,8 @@ function displayProductName(name, fallback = '') {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return text.length > 25
-    ? text.slice(0, 25) + '...'
+  return text.length > 15
+    ? text.slice(0, 15) + '...'
     : text;
 }
 
