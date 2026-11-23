@@ -83,6 +83,24 @@ export default function App() {
     if(query.trim()) rows=rows.filter(p=>(p.name||'').toLowerCase().includes(query.toLowerCase())||(p.code||'').toLowerCase().includes(query.toLowerCase()));
     return rows;
   },[products,categories,tab,selectedSubcategory,query]);
+  const adminProductGroups = useMemo(()=>{
+    const groups=[];
+    for(const main of categories.filter(c=>!c.parent_id)){
+      const directProducts=products.filter(p=>p.category_id===main.id);
+      if(directProducts.length) groups.push({key:main.id,title:main.name,products:directProducts});
+      for(const sub of categories.filter(c=>c.parent_id===main.id)){
+        groups.push({
+          key:sub.id,
+          title:`${main.name} / ${sub.name}`,
+          products:products.filter(p=>p.category_id===sub.id)
+        });
+      }
+    }
+    const knownCategoryIds=new Set(categories.map(c=>c.id));
+    const uncategorized=products.filter(p=>!knownCategoryIds.has(p.category_id));
+    if(uncategorized.length) groups.push({key:'uncategorized',title:'Unassigned category',products:uncategorized});
+    return groups;
+  },[products,categories]);
   async function uploadFile(file,prefix){
     const name=`${prefix}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'-')}`;
     const {error}=await supabase.storage.from(BUCKET).upload(name,file,{upsert:false}); if(error)throw error;
@@ -298,12 +316,18 @@ export default function App() {
           <Trash2 size={16}/> Delete Selected ({selectedProductIds.length})
         </button>
       </div>
-      <div className="admin-product-grid">{products.map(p=><article className="admin-product" key={p.id}>
+      <div className="admin-category-groups">{adminProductGroups.map(group=><section key={group.key} className="admin-category-group" style={{marginTop:24,paddingTop:18,borderTop:'1px solid #e5e0d8'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,marginBottom:14,flexWrap:'wrap'}}>
+          <h3 style={{margin:0,fontSize:17,fontWeight:700}}>{group.title}</h3>
+          <small className="muted">{group.products.length} image(s)</small>
+        </div>
+        {group.products.length===0?<p className="empty-state">No images in this category yet.</p>:<div className="admin-product-grid">{group.products.map(p=><article className="admin-product" key={p.id}>
         <button type="button" onClick={()=>setSelectedProductIds(current=>current.includes(p.id)?current.filter(id=>id!==p.id):[...current,p.id])} style={{display:'inline-flex',alignItems:'center',gap:7,margin:'8px',padding:'7px 11px',border:selectedProductIds.includes(p.id)?'2px solid #166534':'1px solid #777',borderRadius:7,background:selectedProductIds.includes(p.id)?'#dcfce7':'#fff',color:'#222',fontWeight:700,cursor:'pointer',visibility:'visible',opacity:1}}>
           <span aria-hidden="true" style={{display:'inline-block',width:16,height:16,lineHeight:'14px',textAlign:'center',border:'1px solid #555',borderRadius:3,background:'#fff',color:'#166534'}}>{selectedProductIds.includes(p.id)?'✓':''}</span>
           {selectedProductIds.includes(p.id)?'Selected':'Select'}
         </button>
-        <img src={p.image_url} alt={p.name}/><div className="admin-product-info"><b>{displayProductName(p.name,p.code)}</b><span>₹{p.price||599}</span></div><small>{p.code} · {p.is_active?'Published':'Hidden'}</small><div className="admin-actions"><button title="Edit" onClick={()=>{setProductForm({code:p.code,name:p.name||'',category_id:p.category_id,price:String(p.price||599),image:null,is_active:p.is_active});setProductModal(p);}}><Pencil size={15}/></button><button title="Publish/hide" onClick={()=>toggleProduct(p)}>{p.is_active?<EyeOff size={15}/>:<Eye size={15}/>}</button><button title="Delete" onClick={()=>deleteProduct(p)}><Trash2 size={15}/></button></div></article>)}</div></section>
+        <img src={p.image_url} alt={p.name}/><div className="admin-product-info"><b>{displayProductName(p.name,p.code)}</b><span>₹{p.price||599}</span></div><small>{p.code} · {p.is_active?'Published':'Hidden'}</small><div className="admin-actions"><button title="Edit" onClick={()=>{setProductForm({code:p.code,name:p.name||'',category_id:p.category_id,price:String(p.price||599),image:null,is_active:p.is_active});setProductModal(p);}}><Pencil size={15}/></button><button title="Publish/hide" onClick={()=>toggleProduct(p)}>{p.is_active?<EyeOff size={15}/>:<Eye size={15}/>}</button><button title="Delete" onClick={()=>deleteProduct(p)}><Trash2 size={15}/></button></div></article>)}</div>}
+      </section>)}</div></section>
       <section className="panel bulk-panel"><h2>Bulk image upload</h2><p className="muted">Select a subcategory and multiple images. Product codes will continue automatically for that subcategory; you can edit the first code and set the price before uploading.</p><form onSubmit={bulkUpload} className="bulk-form"><label>Category<select value={bulkCategory} onChange={e=>{setBulkCategory(e.target.value);setBulkStartCode(suggestBulkStartCode(e.target.value));}} required><option value="">Choose category</option>{categories.filter(c=>c.parent_id).map(c=><option value={c.id} key={c.id}>{mains.find(m=>m.id===c.parent_id)?.name} / {c.name}</option>)}</select></label><label>Starting product code<input value={bulkStartCode} onChange={e=>setBulkStartCode(e.target.value.toUpperCase())} placeholder="e.g. MSC001" required/></label><label>Product price (₹)<input type="number" min="0" step="0.01" value={bulkPrice} onChange={e=>setBulkPrice(e.target.value)} placeholder="Enter product price" required/></label><label>Images<input type="file" accept="image/*" multiple onChange={e=>setBulkFiles([...e.target.files])} required/></label><span className="muted tiny">{bulkFiles.length} image(s) selected</span><button type="submit" className="primary"><Upload size={16}/> Upload all</button></form></section></>}
     {adminTab==='categories'&&<section className="panel"><div className="panel-head"><div><h2>Categories</h2><p className="muted">Create Men, Women, All and any subcategories.</p></div><button className="primary" onClick={()=>{setCategoryForm({name:'',parent_id:''});setCategoryModal({});}}><Plus size={16}/> Add category</button></div><div className="category-admin-list">{mains.map(c=><div className="category-admin-card" key={c.id}><div className="category-row"><b>{c.name}</b><div><button className="mini-action" onClick={()=>{setCategoryForm({name:c.name,parent_id:''});setCategoryModal(c);}}><Pencil size={14}/> Edit</button><button className="mini-action" onClick={()=>{setCategoryForm({name:'',parent_id:c.id});setCategoryModal({});}}><Plus size={14}/> Subcategory</button><button className="mini-action danger" onClick={()=>deleteCategory(c)}><Trash2 size={14}/></button></div></div>{categories.filter(s=>s.parent_id===c.id).map(s=><div className="sub-row" key={s.id}><span>↳ {s.name}</span><div><button onClick={()=>{setCategoryForm({name:s.name,parent_id:c.id});setCategoryModal(s);}}><Pencil size={14}/></button><button onClick={()=>deleteCategory(s)}><Trash2 size={14}/></button></div></div>)}</div>)}</div></section>}
     {adminTab==='models'&&<section className="panel"><h2>Phone model list</h2><p className="muted">Add brand and model separated by a space, for example Apple iPhone 16 Pro.</p><form className="inline-form" onSubmit={saveModel}><input value={modelName} onChange={e=>setModelName(e.target.value)} placeholder="Apple iPhone 16 Pro"/><button className="primary"><Plus size={16}/> Add model</button></form><div className="model-list">{models.map(m=><div key={m.id}><span><b>{m.brand}</b> {m.model_name}</span><button onClick={()=>deleteModel(m.id)}><Trash2 size={15}/></button></div>)}</div></section>}
