@@ -5,7 +5,7 @@ import { ShoppingBag, Search, Plus, Pencil, Trash2, Upload, X, LogOut, FolderTre
 const WA_NUMBER = '916367312739';
 const initialSettings = { brand_name: 'Kavi.shell', tagline: 'SPEAK WITHOUT WORDS', logo_url: null };
 const initialSlides = Array.from({length:4},(_,i)=>({id:i+1,heading:['New Offers','Fresh Arrivals','Find Your Style','Shop Kavi.shell'][i],description:'Add your offer or announcement here.',button_text:'Explore collection',image_url:'',is_active:true}));
-const blankProduct = { code: '', name: '', category_id: '', price: '599', image: null, is_active: true };
+const blankProduct = { code: '', name: '', category_id: '', price: '299', image: null, is_active: true };
 
 export default function App() {
   const [path,setPath] = useState(location.pathname);
@@ -30,6 +30,9 @@ export default function App() {
   const [modelName,setModelName] = useState('');
   const [editingModelId,setEditingModelId] = useState(null);
   const [adminModelSearch,setAdminModelSearch] = useState('');
+  const [bulkModelBrand,setBulkModelBrand] = useState('');
+  const [bulkModelNames,setBulkModelNames] = useState('');
+  const [bulkModelSaving,setBulkModelSaving] = useState(false);
   const [logoFile,setLogoFile] = useState(null);
   const [slides,setSlides] = useState(initialSlides);
   const [slideFiles,setSlideFiles] = useState([null,null,null,null]);
@@ -37,7 +40,7 @@ export default function App() {
   const [bulkFiles,setBulkFiles] = useState([]);
   const [bulkCategory,setBulkCategory] = useState('');
   const [bulkStartCode,setBulkStartCode] = useState('');
-  const [bulkPrice,setBulkPrice] = useState('599');
+  const [bulkPrice,setBulkPrice] = useState('299');
   const [selectedProductIds,setSelectedProductIds] = useState([]);
   const [selected,setSelected] = useState(null);
   const [previewImage,setPreviewImage] = useState(null);
@@ -235,6 +238,31 @@ export default function App() {
       setNotice(editingModelId?'Phone model updated.':'Phone model added.');
     }
   }
+  async function saveBulkModels(e){
+    e.preventDefault();
+    const brand=bulkModelBrand.trim();
+    const names=[...new Set(bulkModelNames.split(/\\r?\\n/).map(name=>name.trim()).filter(Boolean))];
+    if(!brand)return setNotice('Enter a brand name first.');
+    if(!names.length)return setNotice('Enter at least one model name, one per line.');
+    const existing=new Set(models.map(model=>`${(model.brand||'').trim().toLowerCase()}::${(model.model_name||'').trim().toLowerCase()}`));
+    const batchSeen=new Set();
+    const rows=[];
+    let skipped=0;
+    for(const model_name of names){
+      const key=`${brand.toLowerCase()}::${model_name.toLowerCase()}`;
+      if(existing.has(key)||batchSeen.has(key)){skipped++;continue;}
+      batchSeen.add(key);
+      rows.push({brand,model_name,display_name:`${brand} ${model_name}`});
+    }
+    if(!rows.length)return setNotice(`No new models added. ${skipped} duplicate model(s) skipped.`);
+    setBulkModelSaving(true);
+    const {error}=await supabase.from('phone_models').insert(rows);
+    setBulkModelSaving(false);
+    if(error){setNotice(error.message);return;}
+    setBulkModelNames('');
+    await loadData();
+    setNotice(`${rows.length} model(s) added to ${brand}.${skipped?` ${skipped} duplicate(s) skipped.`:''}`);
+  }
   function startEditModel(model){
     setEditingModelId(model.id);
     setModelName(`${model.brand} ${model.model_name}`.trim());
@@ -408,10 +436,10 @@ export default function App() {
           <span aria-hidden="true" style={{display:'inline-block',width:16,height:16,lineHeight:'14px',textAlign:'center',border:'1px solid #555',borderRadius:3,background:'#fff',color:'#166534'}}>{selectedProductIds.includes(p.id)?'✓':''}</span>
           {selectedProductIds.includes(p.id)?'Selected':'Select'}
         </button>
-        <img src={p.image_url} alt={p.name}/><div className="admin-product-info"><b>{displayProductName(p.name,p.code)}</b><span>₹{p.price||599}</span></div><small>{p.code} · {p.is_active?'Published':'Hidden'}</small><div className="admin-actions"><button title="Edit" onClick={()=>{setProductForm({code:p.code,name:p.name||'',category_id:p.category_id,price:String(p.price||599),image:null,is_active:p.is_active});setProductModal(p);}}><Pencil size={15}/></button><button title="Publish/hide" onClick={()=>toggleProduct(p)}>{p.is_active?<EyeOff size={15}/>:<Eye size={15}/>}</button><button title="Delete" onClick={()=>deleteProduct(p)}><Trash2 size={15}/></button></div></article>)}</div>}
+        <img src={p.image_url} alt={p.name}/><div className="admin-product-info"><b>{displayProductName(p.name,p.code)}</b><span>₹{p.price||299}</span></div><small>{p.code} · {p.is_active?'Published':'Hidden'}</small><div className="admin-actions"><button title="Edit" onClick={()=>{setProductForm({code:p.code,name:p.name||'',category_id:p.category_id,price:String(p.price||599),image:null,is_active:p.is_active});setProductModal(p);}}><Pencil size={15}/></button><button title="Publish/hide" onClick={()=>toggleProduct(p)}>{p.is_active?<EyeOff size={15}/>:<Eye size={15}/>}</button><button title="Delete" onClick={()=>deleteProduct(p)}><Trash2 size={15}/></button></div></article>)}</div>}
       </section>)}</div></section></>}
     {adminTab==='categories'&&<section className="panel"><div className="panel-head"><div><h2>Categories</h2><p className="muted">Create Men, Women, All and any subcategories.</p></div><button className="primary" onClick={()=>{setCategoryForm({name:'',parent_id:''});setCategoryModal({});}}><Plus size={16}/> Add category</button></div><div className="category-admin-list">{mains.map(c=><div className="category-admin-card" key={c.id}><div className="category-row"><b>{c.name}</b><div><button className="mini-action" onClick={()=>{setCategoryForm({name:c.name,parent_id:''});setCategoryModal(c);}}><Pencil size={14}/> Edit</button><button className="mini-action" onClick={()=>{setCategoryForm({name:'',parent_id:c.id});setCategoryModal({});}}><Plus size={14}/> Subcategory</button><button className="mini-action danger" onClick={()=>deleteCategory(c)}><Trash2 size={14}/></button></div></div>{categories.filter(s=>s.parent_id===c.id).map(s=><div className="sub-row" key={s.id}><span>↳ {s.name}</span><div><button onClick={()=>{setCategoryForm({name:s.name,parent_id:c.id});setCategoryModal(s);}}><Pencil size={14}/></button><button onClick={()=>deleteCategory(s)}><Trash2 size={14}/></button></div></div>)}</div>)}</div></section>}
-    {adminTab==='models'&&<section className="panel"><h2>Phone model list</h2><p className="muted">Add, edit or delete brands and phone models. Example: Apple iPhone 16 Pro.</p><form className="inline-form" onSubmit={saveModel}><input value={modelName} onChange={e=>setModelName(e.target.value)} placeholder="Apple iPhone 16 Pro"/><button className="primary" type="submit">{editingModelId?<><Pencil size={16}/> Save changes</>:<><Plus size={16}/> Add model</>}</button>{editingModelId&&<button className="outline" type="button" onClick={cancelEditModel}>Cancel</button>}</form><div className="model-search" style={{position:'relative',margin:'18px 0 12px'}}><Search size={17} style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#8b7168',pointerEvents:'none'}}/><input type="search" value={adminModelSearch} onChange={e=>setAdminModelSearch(e.target.value)} placeholder="Search brand or phone model..." aria-label="Search phone models" style={{width:'100%',boxSizing:'border-box',padding:'12px 14px 12px 42px',border:'1px solid #e5d5cf',borderRadius:8,background:'#fff'}}/></div><div className="model-list">{models.filter(m=>`${m.brand||''} ${m.model_name||''} ${m.display_name||''}`.toLowerCase().includes(adminModelSearch.trim().toLowerCase())).map(m=><div key={m.id}><span><b>{m.brand}</b> {m.model_name}</span><span style={{display:'flex',gap:8}}><button type="button" title="Edit model" aria-label={`Edit ${m.brand} ${m.model_name}`} onClick={()=>startEditModel(m)}><Pencil size={15}/></button><button type="button" title="Delete model" aria-label={`Delete ${m.brand} ${m.model_name}`} onClick={()=>deleteModel(m.id)}><Trash2 size={15}/></button></span></div>)}{models.filter(m=>`${m.brand||''} ${m.model_name||''} ${m.display_name||''}`.toLowerCase().includes(adminModelSearch.trim().toLowerCase())).length===0&&<p className="empty-state">No phone models found.</p>}</div><div style={{display:'flex',justifyContent:'flex-end',marginTop:16,paddingTop:14,borderTop:'1px solid #eadbd5',fontWeight:650,color:'#57372e'}}>Total models: {models.length}</div></section>}
+    {adminTab==='models'&&<section className="panel"><h2>Phone model list</h2><p className="muted">Add, edit or delete brands and phone models. Example: Apple iPhone 16 Pro.</p><form className="inline-form" onSubmit={saveModel}><input value={modelName} onChange={e=>setModelName(e.target.value)} placeholder="Apple iPhone 16 Pro"/><button className="primary" type="submit">{editingModelId?<><Pencil size={16}/> Save changes</>:<><Plus size={16}/> Add model</>}</button>{editingModelId&&<button className="outline" type="button" onClick={cancelEditModel}>Cancel</button>}</form><div className="bulk-model-panel" style={{marginTop:22,padding:18,border:'1px solid #eadbd5',borderRadius:10,background:'#fffaf8'}}><h3 style={{margin:'0 0 6px'}}>Bulk add models</h3><p className="muted" style={{margin:'0 0 14px'}}>Add multiple models to an existing brand or enter a new brand. Write one model name per line.</p><form onSubmit={saveBulkModels} style={{display:'grid',gap:10}}><input value={bulkModelBrand} onChange={e=>setBulkModelBrand(e.target.value)} placeholder="Brand name, e.g. Apple / Samsung / OnePlus" required/><textarea value={bulkModelNames} onChange={e=>setBulkModelNames(e.target.value)} placeholder={'iPhone 18\\niPhone 18 Pro\\niPhone 18 Pro Max'} rows={5} required style={{width:'100%',boxSizing:'border-box',padding:12,border:'1px solid #e5d5cf',borderRadius:8,resize:'vertical',font:'inherit'}}/><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><small className="muted">One model per line. Existing duplicates are skipped automatically.</small><button className="primary" type="submit" disabled={bulkModelSaving}>{bulkModelSaving?'Adding models...':<><Plus size={16}/> Add all models</>}</button></div></form></div><div className="model-search" style={{position:'relative',margin:'18px 0 12px'}}><Search size={17} style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#8b7168',pointerEvents:'none'}}/><input type="search" value={adminModelSearch} onChange={e=>setAdminModelSearch(e.target.value)} placeholder="Search brand or phone model..." aria-label="Search phone models" style={{width:'100%',boxSizing:'border-box',padding:'12px 14px 12px 42px',border:'1px solid #e5d5cf',borderRadius:8,background:'#fff'}}/></div><div className="model-list">{models.filter(m=>`${m.brand||''} ${m.model_name||''} ${m.display_name||''}`.toLowerCase().includes(adminModelSearch.trim().toLowerCase())).map(m=><div key={m.id}><span><b>{m.brand}</b> {m.model_name}</span><span style={{display:'flex',gap:8}}><button type="button" title="Edit model" aria-label={`Edit ${m.brand} ${m.model_name}`} onClick={()=>startEditModel(m)}><Pencil size={15}/></button><button type="button" title="Delete model" aria-label={`Delete ${m.brand} ${m.model_name}`} onClick={()=>deleteModel(m.id)}><Trash2 size={15}/></button></span></div>)}{models.filter(m=>`${m.brand||''} ${m.model_name||''} ${m.display_name||''}`.toLowerCase().includes(adminModelSearch.trim().toLowerCase())).length===0&&<p className="empty-state">No phone models found.</p>}</div><div style={{display:'flex',justifyContent:'flex-end',marginTop:16,paddingTop:14,borderTop:'1px solid #eadbd5',fontWeight:650,color:'#57372e'}}>Total models: {models.length}</div></section>}
     {adminTab==='orders'&&<section className="panel"><div className="panel-head"><div><h2>Customer orders</h2><p className="muted">Orders are saved here before WhatsApp opens.</p></div><button className="outline" onClick={loadData}><RefreshCw size={15}/> Refresh</button></div>{orders.length===0?<p className="empty-state">No orders yet.</p>:<div className="orders-list">{orders.map(o=><article key={o.id} className="order-card"><div className="order-head"><b>Order #{o.id.slice(0,8)}</b><span>{new Date(o.created_at).toLocaleString()}</span><strong>₹{o.total}</strong></div><p><b>{o.customer_name}</b> · {o.customer_phone} · {o.customer_address}</p>{(o.items||[]).map((it,i)=><div className="order-item" key={i}><img src={it.image_url} alt=""/><span>{it.name} ({it.code})<small>{it.phone_model} · Qty {it.quantity}</small></span><b>₹{it.price}</b></div>)}</article>)}</div>}</section>}
     {adminTab==='slides'&&<section className="panel">
       <div className="panel-head"><div><h2>Home page slides</h2><p className="muted">Manage the 4 promotional banners shown on the store home page. Slides change automatically every 3 seconds.</p></div></div>
@@ -448,11 +476,18 @@ export default function App() {
       @media(max-width:900px){.product-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:28px 20px!important}.product-image img{height:300px!important}}
       @media(max-width:640px){.catalogue{width:calc(100% - 28px)!important;padding:24px 0 44px!important}.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:24px 14px!important}.product-image img{height:230px!important}.product-caption{padding-top:9px!important}.product-caption .quick-add{width:100%!important;align-self:stretch!important;min-height:38px!important;padding:8px 10px!important;font-size:12px!important}}
       @media(max-width:640px){
+        .site-header{position:sticky!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;padding:10px 14px!important;box-sizing:border-box!important;width:100%!important}
+        .site-header .brand-lockup{flex:0 0 auto!important;min-width:0!important;white-space:nowrap!important}
+        .site-header .brand-lockup>span{white-space:nowrap!important}
+        .site-header .header-actions{display:flex!important;align-items:center!important;gap:8px!important;flex:0 0 auto!important;margin-left:auto!important}
+        .site-header .header-search-input{position:absolute!important;top:calc(100% + 8px)!important;right:14px!important;width:min(72vw,280px)!important;min-width:0!important;box-sizing:border-box!important;padding:11px 13px!important;border:1px solid #d8c8c1!important;border-radius:12px!important;background:#fff!important;box-shadow:0 8px 24px rgba(40,20,15,.16)!important;z-index:60!important}
+      }
+      @media(max-width:640px){
         .checkout-backdrop{padding:82px 12px 18px!important;align-items:flex-start!important}
         .checkout-modal{width:100%!important;max-height:calc(100dvh - 96px)!important;padding:22px 18px 24px!important;border-radius:20px!important;margin-bottom:12px!important}
         .checkout-modal .modal-close{width:38px!important;height:38px!important}
       }
-    `}</style><header className="site-header" style={{position:'sticky',top:0,zIndex:50,background:'#fff',boxShadow:'0 2px 12px rgba(0,0,0,.06)'}}><button className="brand-lockup" onClick={()=>navigate('/')}><div className="brand-logo">{settings.logo_url?<img src={settings.logo_url} alt="logo"/>:'K.'}</div><span><b>{settings.brand_name||'Kavi.shell'}</b><small>{settings.tagline||'SPEAK WITHOUT WORDS'}</small></span></button><div style={{display:'flex',alignItems:'center',gap:10}}>{showHeaderSearch&&<input autoFocus type="search" value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')document.getElementById('shop')?.scrollIntoView({behavior:'smooth'});}} placeholder="Search designs" aria-label="Search designs" style={{width:'min(38vw,220px)',minWidth:110,padding:'9px 11px',border:'1px solid #d8d2c8',borderRadius:8,background:'#fff'}}/>}<button type="button" aria-label="Search products" title="Search products" onClick={()=>setShowHeaderSearch(v=>!v)} style={{width:42,height:42,display:"inline-flex",alignItems:"center",justifyContent:"center",border:"1px solid #5a382f",borderRadius:999,background:"#fff",color:"#5a382f",cursor:"pointer",padding:0,flexShrink:0}}><Search size={19}/></button><button className="bag-button" onClick={()=>setCheckout(true)}><ShoppingBag size={19}/> Bag <span>{cart.length}</span></button></div></header>
+    `}</style><header className="site-header" style={{position:'sticky',top:0,zIndex:50,background:'#fff',boxShadow:'0 2px 12px rgba(0,0,0,.06)'}}><button className="brand-lockup" onClick={()=>navigate('/')}><div className="brand-logo">{settings.logo_url?<img src={settings.logo_url} alt="logo"/>:'K.'}</div><span><b>{settings.brand_name||'Kavi.shell'}</b><small>{settings.tagline||'SPEAK WITHOUT WORDS'}</small></span></button><div className="header-actions" style={{display:'flex',alignItems:'center',gap:10}}>{showHeaderSearch&&<input className="header-search-input" autoFocus type="search" value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')document.getElementById('shop')?.scrollIntoView({behavior:'smooth'});}} placeholder="Search designs" aria-label="Search designs" style={{width:'min(38vw,220px)',minWidth:110,padding:'9px 11px',border:'1px solid #d8d2c8',borderRadius:8,background:'#fff'}}/>}<button type="button" aria-label="Search products" title="Search products" onClick={()=>setShowHeaderSearch(v=>!v)} style={{width:42,height:42,display:"inline-flex",alignItems:"center",justifyContent:"center",border:"1px solid #5a382f",borderRadius:999,background:"#fff",color:"#5a382f",cursor:"pointer",padding:0,flexShrink:0}}><Search size={19}/></button><button className="bag-button" onClick={()=>setCheckout(true)}><ShoppingBag size={19}/> Bag <span>{cart.length}</span></button></div></header>
     <main>    <section className="hero"><p className="eyebrow">{settings.tagline||'SPEAK WITHOUT WORDS'}</p><h1>Cases that speak<br/><i>your style.</i></h1><p>Thoughtfully picked designs for the phone you carry every day.</p><button className="primary" onClick={()=>document.getElementById('shop').scrollIntoView({behavior:'smooth'})}>Explore collection <span>↓</span></button></section>
 {visibleSlides.length>0&&<section aria-label="Promotions" style={{position:'relative',margin:'18px auto 0',width:'min(1200px,calc(100% - 32px))',height:'clamp(220px,38vw,440px)',overflow:'hidden',borderRadius:18,background:'#252525',color:'#fff'}}>
       {visibleSlides.map((slide,i)=><div key={slide.id||i} style={{position:'absolute',inset:0,opacity:i===activeSlideIndex?1:0,transition:'opacity .55s ease',pointerEvents:i===activeSlideIndex?'auto':'none',backgroundImage:`linear-gradient(90deg,rgba(0,0,0,.72),rgba(0,0,0,.12)),url("${slide.image_url}")`,backgroundSize:'cover',backgroundPosition:'center',display:'flex',alignItems:'center',padding:'clamp(22px,6vw,64px)'}}>
@@ -499,8 +534,8 @@ function displayProductName(name, fallback = '') {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return text.length > 15
-    ? text.slice(0, 15) + '...'
+  return text.length > 25
+    ? text.slice(0, 25) + '...'
     : text;
 }
 
