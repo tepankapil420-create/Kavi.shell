@@ -28,6 +28,7 @@ export default function App() {
   const [categoryModal,setCategoryModal] = useState(null);
   const [categoryForm,setCategoryForm] = useState({name:'',parent_id:''});
   const [modelName,setModelName] = useState('');
+  const [editingModelId,setEditingModelId] = useState(null);
   const [logoFile,setLogoFile] = useState(null);
   const [slides,setSlides] = useState(initialSlides);
   const [slideFiles,setSlideFiles] = useState([null,null,null,null]);
@@ -216,7 +217,29 @@ export default function App() {
   }
   async function saveCategory(e){e.preventDefault();const payload={name:categoryForm.name.trim(),parent_id:categoryForm.parent_id||null};const r=categoryModal?.id?await supabase.from('categories').update(payload).eq('id',categoryModal.id):await supabase.from('categories').insert(payload);if(r.error)setNotice(r.error.message);else{setCategoryModal(null);await loadData();setNotice('Category saved.');}}
   async function deleteCategory(c){if(!confirm(`Delete ${c.name}? Related products may also be deleted.`))return;const {error}=await supabase.from('categories').delete().eq('id',c.id);if(error)setNotice(error.message);else loadData();}
-  async function saveModel(e){e.preventDefault();const [brand,...rest]=modelName.split(' ');const model_name=rest.join(' ').trim();if(!brand||!model_name)return setNotice('Enter brand and model, e.g. Apple iPhone 16 Pro.');const {error}=await supabase.from('phone_models').insert({brand,model_name,display_name:modelName.trim()});if(error)setNotice(error.message);else{setModelName('');loadData();setNotice('Phone model added.');}}
+  async function saveModel(e){
+    e.preventDefault();
+    const [brand,...rest]=modelName.trim().split(/\\s+/);
+    const model_name=rest.join(' ').trim();
+    if(!brand||!model_name)return setNotice('Enter brand and model, e.g. Apple iPhone 16 Pro.');
+    const payload={brand,model_name,display_name:modelName.trim()};
+    const {error}=editingModelId
+      ? await supabase.from('phone_models').update(payload).eq('id',editingModelId)
+      : await supabase.from('phone_models').insert(payload);
+    if(error)setNotice(error.message);
+    else{
+      setModelName('');
+      setEditingModelId(null);
+      await loadData();
+      setNotice(editingModelId?'Phone model updated.':'Phone model added.');
+    }
+  }
+  function startEditModel(model){
+    setEditingModelId(model.id);
+    setModelName(`${model.brand} ${model.model_name}`.trim());
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function cancelEditModel(){setEditingModelId(null);setModelName('');}
   async function deleteModel(id){if(!confirm('Delete this phone model?'))return;const {error}=await supabase.from('phone_models').delete().eq('id',id);if(error)setNotice(error.message);else loadData();}
   async function saveBrand(e){e.preventDefault();try{let logo_url=settings.logo_url;if(logoFile)logo_url=await uploadFile(logoFile,'brand');const {error}=await supabase.from('site_settings').upsert({id:1,brand_name:settings.brand_name,tagline:settings.tagline,logo_url});if(error)throw error;setLogoFile(null);await loadData();setNotice('Brand settings updated.');}catch(e){setNotice(e.message);}}
   async function saveHomeSlides(e){
@@ -387,7 +410,7 @@ export default function App() {
         <img src={p.image_url} alt={p.name}/><div className="admin-product-info"><b>{displayProductName(p.name,p.code)}</b><span>₹{p.price||599}</span></div><small>{p.code} · {p.is_active?'Published':'Hidden'}</small><div className="admin-actions"><button title="Edit" onClick={()=>{setProductForm({code:p.code,name:p.name||'',category_id:p.category_id,price:String(p.price||599),image:null,is_active:p.is_active});setProductModal(p);}}><Pencil size={15}/></button><button title="Publish/hide" onClick={()=>toggleProduct(p)}>{p.is_active?<EyeOff size={15}/>:<Eye size={15}/>}</button><button title="Delete" onClick={()=>deleteProduct(p)}><Trash2 size={15}/></button></div></article>)}</div>}
       </section>)}</div></section></>}
     {adminTab==='categories'&&<section className="panel"><div className="panel-head"><div><h2>Categories</h2><p className="muted">Create Men, Women, All and any subcategories.</p></div><button className="primary" onClick={()=>{setCategoryForm({name:'',parent_id:''});setCategoryModal({});}}><Plus size={16}/> Add category</button></div><div className="category-admin-list">{mains.map(c=><div className="category-admin-card" key={c.id}><div className="category-row"><b>{c.name}</b><div><button className="mini-action" onClick={()=>{setCategoryForm({name:c.name,parent_id:''});setCategoryModal(c);}}><Pencil size={14}/> Edit</button><button className="mini-action" onClick={()=>{setCategoryForm({name:'',parent_id:c.id});setCategoryModal({});}}><Plus size={14}/> Subcategory</button><button className="mini-action danger" onClick={()=>deleteCategory(c)}><Trash2 size={14}/></button></div></div>{categories.filter(s=>s.parent_id===c.id).map(s=><div className="sub-row" key={s.id}><span>↳ {s.name}</span><div><button onClick={()=>{setCategoryForm({name:s.name,parent_id:c.id});setCategoryModal(s);}}><Pencil size={14}/></button><button onClick={()=>deleteCategory(s)}><Trash2 size={14}/></button></div></div>)}</div>)}</div></section>}
-    {adminTab==='models'&&<section className="panel"><h2>Phone model list</h2><p className="muted">Add brand and model separated by a space, for example Apple iPhone 16 Pro.</p><form className="inline-form" onSubmit={saveModel}><input value={modelName} onChange={e=>setModelName(e.target.value)} placeholder="Apple iPhone 16 Pro"/><button className="primary"><Plus size={16}/> Add model</button></form><div className="model-list">{models.map(m=><div key={m.id}><span><b>{m.brand}</b> {m.model_name}</span><button onClick={()=>deleteModel(m.id)}><Trash2 size={15}/></button></div>)}</div></section>}
+    {adminTab==='models'&&<section className="panel"><h2>Phone model list</h2><p className="muted">Add, edit or delete brands and phone models. Example: Apple iPhone 16 Pro.</p><form className="inline-form" onSubmit={saveModel}><input value={modelName} onChange={e=>setModelName(e.target.value)} placeholder="Apple iPhone 16 Pro"/><button className="primary" type="submit">{editingModelId?<><Pencil size={16}/> Save changes</>:<><Plus size={16}/> Add model</>}</button>{editingModelId&&<button className="outline" type="button" onClick={cancelEditModel}>Cancel</button>}</form><div className="model-list">{models.map(m=><div key={m.id}><span><b>{m.brand}</b> {m.model_name}</span><span style={{display:'flex',gap:8}}><button type="button" title="Edit model" aria-label={`Edit ${m.brand} ${m.model_name}`} onClick={()=>startEditModel(m)}><Pencil size={15}/></button><button type="button" title="Delete model" aria-label={`Delete ${m.brand} ${m.model_name}`} onClick={()=>deleteModel(m.id)}><Trash2 size={15}/></button></span></div>)}</div></section>}
     {adminTab==='orders'&&<section className="panel"><div className="panel-head"><div><h2>Customer orders</h2><p className="muted">Orders are saved here before WhatsApp opens.</p></div><button className="outline" onClick={loadData}><RefreshCw size={15}/> Refresh</button></div>{orders.length===0?<p className="empty-state">No orders yet.</p>:<div className="orders-list">{orders.map(o=><article key={o.id} className="order-card"><div className="order-head"><b>Order #{o.id.slice(0,8)}</b><span>{new Date(o.created_at).toLocaleString()}</span><strong>₹{o.total}</strong></div><p><b>{o.customer_name}</b> · {o.customer_phone} · {o.customer_address}</p>{(o.items||[]).map((it,i)=><div className="order-item" key={i}><img src={it.image_url} alt=""/><span>{it.name} ({it.code})<small>{it.phone_model} · Qty {it.quantity}</small></span><b>₹{it.price}</b></div>)}</article>)}</div>}</section>}
     {adminTab==='slides'&&<section className="panel">
       <div className="panel-head"><div><h2>Home page slides</h2><p className="muted">Manage the 4 promotional banners shown on the store home page. Slides change automatically every 3 seconds.</p></div></div>
@@ -475,8 +498,8 @@ function displayProductName(name, fallback = '') {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return text.length > 15
-    ? text.slice(0, 15) + '...'
+  return text.length > 25
+    ? text.slice(0, 25) + '...'
     : text;
 }
 
