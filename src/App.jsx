@@ -30,9 +30,6 @@ export default function App() {
   const [modelName,setModelName] = useState('');
   const [editingModelId,setEditingModelId] = useState(null);
   const [adminModelSearch,setAdminModelSearch] = useState('');
-  const [bulkModelBrand,setBulkModelBrand] = useState('');
-  const [bulkModelNames,setBulkModelNames] = useState('');
-  const [bulkModelSaving,setBulkModelSaving] = useState(false);
   const [logoFile,setLogoFile] = useState(null);
   const [slides,setSlides] = useState(initialSlides);
   const [slideFiles,setSlideFiles] = useState([null,null,null,null]);
@@ -238,31 +235,6 @@ export default function App() {
       setNotice(editingModelId?'Phone model updated.':'Phone model added.');
     }
   }
-  async function saveBulkModels(e){
-    e.preventDefault();
-    const brand=bulkModelBrand.trim();
-    const names=[...new Set(bulkModelNames.split(/\\r?\\n/).map(name=>name.trim()).filter(Boolean))];
-    if(!brand)return setNotice('Enter a brand name first.');
-    if(!names.length)return setNotice('Enter at least one model name, one per line.');
-    const existing=new Set(models.map(model=>`${(model.brand||'').trim().toLowerCase()}::${(model.model_name||'').trim().toLowerCase()}`));
-    const batchSeen=new Set();
-    const rows=[];
-    let skipped=0;
-    for(const model_name of names){
-      const key=`${brand.toLowerCase()}::${model_name.toLowerCase()}`;
-      if(existing.has(key)||batchSeen.has(key)){skipped++;continue;}
-      batchSeen.add(key);
-      rows.push({brand,model_name,display_name:`${brand} ${model_name}`});
-    }
-    if(!rows.length)return setNotice(`No new models added. ${skipped} duplicate model(s) skipped.`);
-    setBulkModelSaving(true);
-    const {error}=await supabase.from('phone_models').insert(rows);
-    setBulkModelSaving(false);
-    if(error){setNotice(error.message);return;}
-    setBulkModelNames('');
-    await loadData();
-    setNotice(`${rows.length} model(s) added to ${brand}.${skipped?` ${skipped} duplicate(s) skipped.`:''}`);
-  }
   function startEditModel(model){
     setEditingModelId(model.id);
     setModelName(`${model.brand} ${model.model_name}`.trim());
@@ -439,7 +411,7 @@ export default function App() {
         <img src={p.image_url} alt={p.name}/><div className="admin-product-info"><b>{displayProductName(p.name,p.code)}</b><span>₹{p.price||599}</span></div><small>{p.code} · {p.is_active?'Published':'Hidden'}</small><div className="admin-actions"><button title="Edit" onClick={()=>{setProductForm({code:p.code,name:p.name||'',category_id:p.category_id,price:String(p.price||599),image:null,is_active:p.is_active});setProductModal(p);}}><Pencil size={15}/></button><button title="Publish/hide" onClick={()=>toggleProduct(p)}>{p.is_active?<EyeOff size={15}/>:<Eye size={15}/>}</button><button title="Delete" onClick={()=>deleteProduct(p)}><Trash2 size={15}/></button></div></article>)}</div>}
       </section>)}</div></section></>}
     {adminTab==='categories'&&<section className="panel"><div className="panel-head"><div><h2>Categories</h2><p className="muted">Create Men, Women, All and any subcategories.</p></div><button className="primary" onClick={()=>{setCategoryForm({name:'',parent_id:''});setCategoryModal({});}}><Plus size={16}/> Add category</button></div><div className="category-admin-list">{mains.map(c=><div className="category-admin-card" key={c.id}><div className="category-row"><b>{c.name}</b><div><button className="mini-action" onClick={()=>{setCategoryForm({name:c.name,parent_id:''});setCategoryModal(c);}}><Pencil size={14}/> Edit</button><button className="mini-action" onClick={()=>{setCategoryForm({name:'',parent_id:c.id});setCategoryModal({});}}><Plus size={14}/> Subcategory</button><button className="mini-action danger" onClick={()=>deleteCategory(c)}><Trash2 size={14}/></button></div></div>{categories.filter(s=>s.parent_id===c.id).map(s=><div className="sub-row" key={s.id}><span>↳ {s.name}</span><div><button onClick={()=>{setCategoryForm({name:s.name,parent_id:c.id});setCategoryModal(s);}}><Pencil size={14}/></button><button onClick={()=>deleteCategory(s)}><Trash2 size={14}/></button></div></div>)}</div>)}</div></section>}
-    {adminTab==='models'&&<section className="panel"><h2>Phone model list</h2><p className="muted">Add, edit or delete brands and phone models. Example: Apple iPhone 16 Pro.</p><form className="inline-form" onSubmit={saveModel}><input value={modelName} onChange={e=>setModelName(e.target.value)} placeholder="Apple iPhone 16 Pro"/><button className="primary" type="submit">{editingModelId?<><Pencil size={16}/> Save changes</>:<><Plus size={16}/> Add model</>}</button>{editingModelId&&<button className="outline" type="button" onClick={cancelEditModel}>Cancel</button>}</form><div className="bulk-model-panel" style={{marginTop:22,padding:18,border:'1px solid #eadbd5',borderRadius:10,background:'#fffaf8'}}><h3 style={{margin:'0 0 6px'}}>Bulk add models</h3><p className="muted" style={{margin:'0 0 14px'}}>Add multiple models to an existing brand or enter a new brand. Write one model name per line.</p><form onSubmit={saveBulkModels} style={{display:'grid',gap:10}}><input value={bulkModelBrand} onChange={e=>setBulkModelBrand(e.target.value)} placeholder="Brand name, e.g. Apple / Samsung / OnePlus" required/><textarea value={bulkModelNames} onChange={e=>setBulkModelNames(e.target.value)} placeholder={'iPhone 18\\niPhone 18 Pro\\niPhone 18 Pro Max'} rows={5} required style={{width:'100%',boxSizing:'border-box',padding:12,border:'1px solid #e5d5cf',borderRadius:8,resize:'vertical',font:'inherit'}}/><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><small className="muted">One model per line. Existing duplicates are skipped automatically.</small><button className="primary" type="submit" disabled={bulkModelSaving}>{bulkModelSaving?'Adding models...':<><Plus size={16}/> Add all models</>}</button></div></form></div><div className="model-search" style={{position:'relative',margin:'18px 0 12px'}}><Search size={17} style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#8b7168',pointerEvents:'none'}}/><input type="search" value={adminModelSearch} onChange={e=>setAdminModelSearch(e.target.value)} placeholder="Search brand or phone model..." aria-label="Search phone models" style={{width:'100%',boxSizing:'border-box',padding:'12px 14px 12px 42px',border:'1px solid #e5d5cf',borderRadius:8,background:'#fff'}}/></div><div className="model-list">{models.filter(m=>`${m.brand||''} ${m.model_name||''} ${m.display_name||''}`.toLowerCase().includes(adminModelSearch.trim().toLowerCase())).map(m=><div key={m.id}><span><b>{m.brand}</b> {m.model_name}</span><span style={{display:'flex',gap:8}}><button type="button" title="Edit model" aria-label={`Edit ${m.brand} ${m.model_name}`} onClick={()=>startEditModel(m)}><Pencil size={15}/></button><button type="button" title="Delete model" aria-label={`Delete ${m.brand} ${m.model_name}`} onClick={()=>deleteModel(m.id)}><Trash2 size={15}/></button></span></div>)}{models.filter(m=>`${m.brand||''} ${m.model_name||''} ${m.display_name||''}`.toLowerCase().includes(adminModelSearch.trim().toLowerCase())).length===0&&<p className="empty-state">No phone models found.</p>}</div><div style={{display:'flex',justifyContent:'flex-end',marginTop:16,paddingTop:14,borderTop:'1px solid #eadbd5',fontWeight:650,color:'#57372e'}}>Total models: {models.length}</div></section>}
+    {adminTab==='models'&&<section className="panel"><h2>Phone model list</h2><p className="muted">Add, edit or delete brands and phone models. Example: Apple iPhone 16 Pro.</p><form className="inline-form" onSubmit={saveModel}><input value={modelName} onChange={e=>setModelName(e.target.value)} placeholder="Apple iPhone 16 Pro"/><button className="primary" type="submit">{editingModelId?<><Pencil size={16}/> Save changes</>:<><Plus size={16}/> Add model</>}</button>{editingModelId&&<button className="outline" type="button" onClick={cancelEditModel}>Cancel</button>}</form><div className="model-search" style={{position:'relative',margin:'18px 0 12px'}}><Search size={17} style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'#8b7168',pointerEvents:'none'}}/><input type="search" value={adminModelSearch} onChange={e=>setAdminModelSearch(e.target.value)} placeholder="Search brand or phone model..." aria-label="Search phone models" style={{width:'100%',boxSizing:'border-box',padding:'12px 14px 12px 42px',border:'1px solid #e5d5cf',borderRadius:8,background:'#fff'}}/></div><div className="model-list">{models.filter(m=>`${m.brand||''} ${m.model_name||''} ${m.display_name||''}`.toLowerCase().includes(adminModelSearch.trim().toLowerCase())).map(m=><div key={m.id}><span><b>{m.brand}</b> {m.model_name}</span><span style={{display:'flex',gap:8}}><button type="button" title="Edit model" aria-label={`Edit ${m.brand} ${m.model_name}`} onClick={()=>startEditModel(m)}><Pencil size={15}/></button><button type="button" title="Delete model" aria-label={`Delete ${m.brand} ${m.model_name}`} onClick={()=>deleteModel(m.id)}><Trash2 size={15}/></button></span></div>)}{models.filter(m=>`${m.brand||''} ${m.model_name||''} ${m.display_name||''}`.toLowerCase().includes(adminModelSearch.trim().toLowerCase())).length===0&&<p className="empty-state">No phone models found.</p>}</div><div style={{display:'flex',justifyContent:'flex-end',marginTop:16,paddingTop:14,borderTop:'1px solid #eadbd5',fontWeight:650,color:'#57372e'}}>Total models: {models.length}</div></section>}
     {adminTab==='orders'&&<section className="panel"><div className="panel-head"><div><h2>Customer orders</h2><p className="muted">Orders are saved here before WhatsApp opens.</p></div><button className="outline" onClick={loadData}><RefreshCw size={15}/> Refresh</button></div>{orders.length===0?<p className="empty-state">No orders yet.</p>:<div className="orders-list">{orders.map(o=><article key={o.id} className="order-card"><div className="order-head"><b>Order #{o.id.slice(0,8)}</b><span>{new Date(o.created_at).toLocaleString()}</span><strong>₹{o.total}</strong></div><p><b>{o.customer_name}</b> · {o.customer_phone} · {o.customer_address}</p>{(o.items||[]).map((it,i)=><div className="order-item" key={i}><img src={it.image_url} alt=""/><span>{it.name} ({it.code})<small>{it.phone_model} · Qty {it.quantity}</small></span><b>₹{it.price}</b></div>)}</article>)}</div>}</section>}
     {adminTab==='slides'&&<section className="panel">
       <div className="panel-head"><div><h2>Home page slides</h2><p className="muted">Manage the 4 promotional banners shown on the store home page. Slides change automatically every 3 seconds.</p></div></div>
@@ -527,8 +499,8 @@ function displayProductName(name, fallback = '') {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return text.length > 25
-    ? text.slice(0, 25) + '...'
+  return text.length > 15
+    ? text.slice(0, 15) + '...'
     : text;
 }
 
