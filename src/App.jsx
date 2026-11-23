@@ -219,7 +219,7 @@ export default function App() {
   async function deleteCategory(c){if(!confirm(`Delete ${c.name}? Related products may also be deleted.`))return;const {error}=await supabase.from('categories').delete().eq('id',c.id);if(error)setNotice(error.message);else loadData();}
   async function saveModel(e){
     e.preventDefault();
-    const [brand,...rest]=modelName.trim().split(/\\s+/);
+    const [brand,...rest]=modelName.trim().split(/\s+/);
     const model_name=rest.join(' ').trim();
     if(!brand||!model_name)return setNotice('Enter brand and model, e.g. Apple iPhone 16 Pro.');
     const payload={brand,model_name,display_name:modelName.trim()};
@@ -498,8 +498,8 @@ function displayProductName(name, fallback = '') {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return text.length > 25
-    ? text.slice(0, 25) + '...'
+  return text.length > 15
+    ? text.slice(0, 15) + '...'
     : text;
 }
 
